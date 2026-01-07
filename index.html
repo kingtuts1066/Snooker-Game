@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Snooker Career</title>
+  <style>
+    body { font-family: Arial; background:#111; color:#eee; }
+    button { padding:10px; font-size:16px; margin:5px 0; }
+    pre { background:#000; color:#0f0; padding:10px; min-height:300px; }
+  </style>
+</head>
+<body>
+
+<h1>Snooker Career Mode</h1>
+
+<div id="stats"></div>
+
+<button id="play">Play Best-of-5 Match</button>
+<button id="train">Train Potting</button>
+<button id="earn">Earn Money (No Fatigue)</button>
+<button id="buyFood">Buy Food (-Fatigue)</button>
+
+<pre id="output"></pre>
+
+<script>
+/* ---------- UTIL ---------- */
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+function randomChance(p){return Math.random()*100<p;}
+
+/* ---------- LOAD / SAVE ---------- */
+function loadPlayer(){
+  return JSON.parse(localStorage.getItem("player")) || {
+    name:"You",age:12,
+    potting:55,longPotting:40,safety:35,breakBuilding:30,
+    composure:45,confidence:50,fatigue:0,experience:0,
+    money:50
+  };
+}
+function savePlayer(){
+  localStorage.setItem("player",JSON.stringify(player));
+  updateStats();
+}
+
+/* ---------- PLAYERS ---------- */
+let player=loadPlayer();
+const ai={
+  name:"Local Rival",
+  potting:50,longPotting:45,safety:60,breakBuilding:40,
+  composure:55,confidence:50,fatigue:0
+};
+
+/* ---------- FRAME SIM ---------- */
+function simulateFrame(a,b,pressure){
+  let sa=0,sb=0;
+  const log=[];
+  log.push("Frame begins");
+
+  for(let v=1;v<=12;v++){
+    const p=v%2?a:b;
+    const chance=clamp(
+      p.potting*0.6+p.longPotting*0.2+p.confidence*0.2
+      -pressure*0.3-p.fatigue*0.2,5,95);
+
+    if(randomChance(chance)){
+      const pts=Math.floor(Math.random()*(p.breakBuilding/10)+10);
+      log.push(`${p.name} scores ${pts}`);
+      p===a?sa+=pts:sb+=pts;
+      if(pts>=40) log.push("Strong break building");
+    }else{
+      log.push(`${p.name} misses`);
+    }
+  }
+
+  const winner=sa>=sb?a.name:b.name;
+  log.push(`Frame score: ${a.name} ${sa}–${sb} ${b.name}`);
+  log.push(`${winner} wins the frame`);
+  return {winner,log};
+}
+
+/* ---------- MATCH ---------- */
+function playMatch(){
+  let wp=0,wa=0,f=1;
+  const out=[];
+  while(wp<3&&wa<3){
+    out.push(`=== FRAME ${f} ===`);
+    const fr=simulateFrame(player,ai,30);
+    fr.log.forEach(l=>out.push(l));
+    fr.winner===player.name?wp++:wa++;
+    out.push(`Match score: ${wp}-${wa}`);
+    f++;
+  }
+  const win=wp>wa;
+  out.push(`🏆 MATCH WINNER: ${win?player.name:ai.name}`);
+  applyResult(win);
+  savePlayer();
+  return out;
+}
+
+/* ---------- CAREER ---------- */
+function applyResult(win){
+  player.experience+=win?15:5;
+  player.confidence+=win?5:-4;
+  player.fatigue+=10;
+  player.confidence=clamp(player.confidence,0,100);
+  player.fatigue=clamp(player.fatigue,0,100);
+}
+
+/* ---------- TRAIN ---------- */
+function train(){
+  if(player.fatigue>80){
+    output.textContent="Too tired to train";
+    return;
+  }
+  player.potting+=2;
+  player.longPotting+=1;
+  player.fatigue+=8;
+  savePlayer();
+  output.textContent="Training complete";
+}
+
+/* ---------- EARN MONEY ---------- */
+function earnMoney(){
+  const earned=Math.floor(Math.random()*10)+5;
+  player.money+=earned;
+  player.experience+=2;
+  savePlayer();
+  output.textContent=`You earned $${earned} without fatigue!`;
+}
+
+/* ---------- BUY FOOD ---------- */
+function buyFood(){
+  if(player.money<10){
+    output.textContent="Not enough money to buy food (10$ needed)";
+    return;
+  }
+  player.money-=10;
+  player.fatigue-=20;
+  player.fatigue=clamp(player.fatigue,0,100);
+  savePlayer();
+  output.textContent="Ate food! Fatigue reduced by 20.";
+}
+
+/* ---------- UI ---------- */
+const output=document.getElementById("output");
+const stats=document.getElementById("stats");
+
+function updateStats(){
+  stats.innerHTML=
+    `<b>${player.name}</b><br>
+     Potting: ${player.potting} |
+     Confidence: ${player.confidence} |
+     Fatigue: ${player.fatigue} |
+     XP: ${player.experience} |
+     Money: $${player.money}`;
+}
+
+document.getElementById("play").onclick=()=>{output.textContent=playMatch().join("\n");};
+document.getElementById("train").onclick=train;
+document.getElementById("earn").onclick=earnMoney;
+document.getElementById("buyFood").onclick=buyFood;
+
+updateStats();
+</script>
+
+</body>
+</html>
