@@ -217,10 +217,12 @@ document.getElementById("earn").onclick = earnMoney;
 document.getElementById("buyFood").onclick = buyFood;
 
 /* ---------- INITIAL LOAD ---------- */
-updateStats();
-updateTownRankings();
-updateXPButtons();
-updateRivalButtons();
+window.onload = function(){
+  updateStats();
+  updateTownRankings();
+  updateXPButtons();
+  updateRivalButtons();
+};
 </script>
 
 </body>
