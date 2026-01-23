@@ -122,7 +122,7 @@ function playMatch(r){
   player.money += cash;
   player.XP += win?3:1;
   player.fatigue += 15;
-  log.push(`🏆 ${win?"You win":"You lose"} | $${cash} | Fatigue +15`);
+  log.push(`🏆 ${win?"You win":"You lose"} | £${cash} | Fatigue +15`);
   save();
   output.textContent = log.join("\n");
 }
@@ -138,7 +138,7 @@ function train(){
   player.XP += Math.floor(Math.random()*3)+1;
   player.training++;
   save();
-  output.textContent=`Training complete (Cost $${cost})`;
+  output.textContent=`Training complete (Cost £${cost})`;
 }
 
 /* ---------- CASH ---------- */
@@ -146,12 +146,12 @@ function earn(){
   const c = Math.floor(Math.random()*15)+5;
   player.money += c;
   save();
-  output.textContent=`You earned $${c}`;
+  output.textContent=`You earned £${c}`;
 }
 
 /* ---------- FOOD ---------- */
 function food(){
-  if(player.money<10){ output.textContent="Need $10"; return; }
+  if(player.money<10){ output.textContent="Need £10"; return; }
   player.money -=10;
   player.fatigue = clamp(player.fatigue-20,0,100);
   save();
@@ -178,7 +178,7 @@ function renderStats(){
   <b>${player.name}</b><br>
   Potting:${player.potting} | Long:${player.longPotting} | Safety:${player.safety}<br>
   Break:${player.breakBuilding} | Composure:${player.composure}<br>
-  XP:${player.XP} | $${player.money} | Fatigue:${player.fatigue}
+  XP:${player.XP} | £${player.money} | Fatigue:${player.fatigue}
   `;
 }
 
