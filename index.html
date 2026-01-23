@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snooker Career Mode</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: #eee;
+}
+button {
+  padding: 10px;
+  font-size: 14px;
+  margin: 4px;
+}
+pre {
+  background: #000;
+  color: #0f0;
+  padding: 10px;
+  min-height: 280px;
+  white-space: pre-wrap;
+}
+.section {
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎱 Snooker Career Mode</h1>
+
+<div id="stats"></div>
+
+<div class="section">
+  <button id="play">Play Match</button>
+  <button id="train">Train (Costs $)</button>
+  <button id="earn">Earn Cash</button>
+  <button id="food">Buy Food (-Fatigue)</button>
+</div>
+
+<div class="section">
+  <h3>Allocate XP</h3>
+  <div id="xpButtons"></div>
+</div>
+
+<div class="section">
+  <h3>Challenge Town Rivals</h3>
+  <div id="rivalButtons"></div>
+</div>
+
+<div class="section">
+  <h3>Town Rankings</h3>
+  <pre id="townRankings"></pre>
+</div>
+
+<pre id="output"></pre>
+
+<script>
+/* ---------- HELPERS ---------- */
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function chance(p){ return Math.random()*100 < p; }
+
+/* ---------- LOAD / SAVE ---------- */
+function loadPlayer(){
+  return JSON.parse(localStorage.getItem("player")) || {
+    name:"You",
+    potting:55,longPotting:40,safety:35,breakBuilding:30,composure:45,
+    confidence:50,fatigue:0,
+    money:50, XP:0, training:0,
+    attr:{potting:0,longPotting:0,safety:0,breakBuilding:0,composure:0}
+  };
+}
+function save(){
+  localStorage.setItem("player",JSON.stringify(player));
+  renderStats(); renderXP(); renderRankings();
+}
+
+/* ---------- PLAYER ---------- */
+let player = loadPlayer();
+
+/* ---------- RIVALS ---------- */
+const rivals = [
+  {name:"Local Rival", potting:50,longPotting:45,breakBuilding:40,confidence:50,experience:10},
+  {name:"Junior Champ", potting:55,longPotting:50,breakBuilding:45,confidence:55,experience:15},
+  {name:"City Prodigy", potting:58,longPotting:52,breakBuilding:48,confidence:60,experience:20}
+];
+
+/* ---------- FATIGUE ---------- */
+function eff(stat){
+  return Math.max(1, Math.floor(stat * (1 - player.fatigue/150)));
+}
+
+/* ---------- FRAME ---------- */
+function playFrame(a,b){
+  let sa=0,sb=0,log=[];
+  for(let i=0;i<10;i++){
+    const p = i%2===0?a:b;
+    const pot = eff(p.potting||p.potting);
+    if(chance(pot)){
+      const pts = Math.floor(Math.random()*20+10);
+      p===a?sa+=pts:sb+=pts;
+      log.push(`${p.name} scores ${pts}`);
+    } else log.push(`${p.name} misses`);
+  }
+  log.push(`Frame: ${a.name} ${sa}-${sb} ${b.name}`);
+  return {winner: sa>=sb?a:b, log};
+}
+
+/* ---------- MATCH ---------- */
+function playMatch(r){
+  let pw=0,rw=0,log=[];
+  while(pw<3 && rw<3){
+    const f = playFrame(player,r);
+    log.push(...f.log);
+    f.winner===player?pw++:rw++;
+  }
+  const win = pw>rw;
+  const cash = win ? 20 + r.experience : 5;
+  player.money += cash;
+  player.XP += win?3:1;
+  player.fatigue += 15;
+  log.push(`🏆 ${win?"You win":"You lose"} | $${cash} | Fatigue +15`);
+  save();
+  output.textContent = log.join("\n");
+}
+
+/* ---------- TRAIN ---------- */
+function train(){
+  const cost = 10 + player.training*5;
+  if(player.money<cost){
+    output.textContent="Not enough money to train";
+    return;
+  }
+  player.money -= cost;
+  player.XP += Math.floor(Math.random()*3)+1;
+  player.training++;
+  save();
+  output.textContent=`Training complete (Cost $${cost})`;
+}
+
+/* ---------- CASH ---------- */
+function earn(){
+  const c = Math.floor(Math.random()*15)+5;
+  player.money += c;
+  save();
+  output.textContent=`You earned $${c}`;
+}
+
+/* ---------- FOOD ---------- */
+function food(){
+  if(player.money<10){ output.textContent="Need $10"; return; }
+  player.money -=10;
+  player.fatigue = clamp(player.fatigue-20,0,100);
+  save();
+  output.textContent="Fatigue reduced";
+}
+
+/* ---------- XP ---------- */
+function cost(attr){ return player.attr[attr]+1; }
+function addXP(attr){
+  const c = cost(attr);
+  if(player.XP<c){ output.textContent="Not enough XP"; return; }
+  player.XP -= c;
+  player.attr[attr]++;
+  player[attr]++;
+  save();
+}
+
+/* ---------- RENDER ---------- */
+const stats = document.getElementById("stats");
+const output = document.getElementById("output");
+
+function renderStats(){
+  stats.innerHTML = `
+  <b>${player.name}</b><br>
+  Potting:${player.potting} | Long:${player.longPotting} | Safety:${player.safety}<br>
+  Break:${player.breakBuilding} | Composure:${player.composure}<br>
+  XP:${player.XP} | $${player.money} | Fatigue:${player.fatigue}
+  `;
+}
+
+function renderXP(){
+  const d=document.getElementById("xpButtons"); d.innerHTML="";
+  ["potting","longPotting","safety","breakBuilding","composure"].forEach(a=>{
+    const b=document.createElement("button");
+    b.textContent=`${a} +1 (Cost ${cost(a)} XP)`;
+    b.onclick=()=>addXP(a);
+    d.appendChild(b);
+  });
+}
+
+function renderRivals(){
+  const d=document.getElementById("rivalButtons"); d.innerHTML="";
+  rivals.forEach(r=>{
+    const b=document.createElement("button");
+    b.textContent=`Play ${r.name}`;
+    b.onclick=()=>playMatch(r);
+    d.appendChild(b);
+  });
+}
+
+function renderRankings(){
+  let list=[{name:"You",experience:player.XP},...rivals];
+  list.sort((a,b)=>b.experience-a.experience);
+  document.getElementById("townRankings").textContent =
+    list.map((p,i)=>`${i+1}. ${p.name} (${p.experience} XP)`).join("\n");
+}
+
+/* ---------- BUTTONS ---------- */
+document.getElementById("play").onclick=()=>playMatch(rivals[0]);
+document.getElementById("train").onclick=train;
+document.getElementById("earn").onclick=earn;
+document.getElementById("food").onclick=food;
+
+/* ---------- INIT ---------- */
+window.onload = ()=>{
+  renderStats();
+  renderXP();
+  renderRivals();
+  renderRankings();
+};
+</script>
+
+</body>
+</html>
