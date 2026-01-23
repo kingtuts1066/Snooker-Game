@@ -228,14 +228,15 @@ document.getElementById("train").onclick=train;
 document.getElementById("earn").onclick=earn;
 document.getElementById("food").onclick=food;
 
-/* ---------- INIT ---------- */
-window.onload = ()=>{
+/* ---------- render -------------*/
+
+<script>
+  window.onload = function(){
   renderStats();
-  renderXP();
-  renderRivals();
   renderRankings();
-};
-</script>
+  updateXPButtons();    // <-- THIS is essential
+  updateRivalButtons();
+};</script>
 
 </body>
 </html>
